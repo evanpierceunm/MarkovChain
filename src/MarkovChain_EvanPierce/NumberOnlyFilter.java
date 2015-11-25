@@ -1,7 +1,8 @@
 package MarkovChain_EvanPierce;
 
 /**
- * Created by randolphpierce on 11/23/15.
+ * Class from http://stackoverflow.com/questions/8017811/only-allowing-numbers-and-a-symbol-to-be-typed-into-a-jtextfield/8017847#8017847
+ * Minor edits by Evan Pierce
  */
 import javax.swing.*;
 import javax.swing.text.*;
@@ -31,7 +32,7 @@ public class NumberOnlyFilter extends DocumentFilter
    */
   public boolean containsOnlyNumbers(String text)
   {
-    Pattern pattern = Pattern.compile("([+-]{0,1})?[\\d]*");
+    Pattern pattern = Pattern.compile("([\\d]{0,2})");
     Matcher matcher = pattern.matcher(text);
     boolean isMatch = matcher.matches();
     return isMatch;
