@@ -5,10 +5,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
+import java.io.*;
+import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.text.AbstractDocument;
 
@@ -17,6 +15,8 @@ public class Markov extends JFrame implements ActionListener
   private JButton order1, order2, order3, start;
   private JLabel stringLabel, orderLabel;
   private JTextField stringCountInput;
+
+//  private Pattern validChar = Pattern.compile("[a-zA-Z]|[']");
 
   public int stringCount = -1;
   public int order = -1;
@@ -122,6 +122,8 @@ public class Markov extends JFrame implements ActionListener
     panel.add(start);
     start.setBounds(centerX, butYOffset*4, butWidth, butHeight);
     start.addActionListener(this);
+
+
   }
 
   @Override
@@ -152,16 +154,53 @@ public class Markov extends JFrame implements ActionListener
       }
       if (stringCount < 1)
       {
-        JOptionPane.showMessageDialog(null, "Enter amount of sentences to be generated", "Error", JOptionPane.ERROR_MESSAGE);
+        error("Enter amount of sentences to be generated");
         return;
       }
       if (order < 1)
       {
-        JOptionPane.showMessageDialog(null, "Order must be > 0 and < 3", "Error", JOptionPane.ERROR_MESSAGE);
+        error("Order must be > 0 and < 3");
         return;
       }
       System.out.println("Markov Chain Started");
-      new WordChain(order, stringCount);
+//      new WordChain(order, stringCount);
+      this.dispose();
+      JOptionPane.showMessageDialog(null, "Select text files to read from", "Select Text Files",
+          JOptionPane.INFORMATION_MESSAGE);
+      int files = 0;
+      for(;;)
+      {
+        String path = pickFile();
+        if (path == null)
+        {
+          int reply = JOptionPane.showConfirmDialog(null, "Are you sure you want to exit?", "Exit",
+              JOptionPane.YES_NO_OPTION);
+          if (reply == JOptionPane.YES_OPTION) System.exit(0);
+          else continue;
+        }
+//        if (path == null && files == 0)
+//        {
+//          error("Select at least one file");
+//          continue;
+//        }
+        else if (path.length() < 1)
+        {
+          error("Select a valid file");
+          continue;
+        }
+//        if (path.substring(path.length()-3) != ".txt")
+//        {
+//          error("File must be a text file");
+//          continue;
+//        }
+        files ++;
+        openFile(path);
+        System.out.println(readWord());
+        int reply = JOptionPane.showConfirmDialog(null, "Would you like to choose more text files?", "Continue",
+            JOptionPane.YES_NO_OPTION);
+        if (reply == JOptionPane.NO_OPTION) break;
+      }
+      System.out.println("Complete");
     }
     if (obj == stringCountInput)
     {
@@ -171,9 +210,26 @@ public class Markov extends JFrame implements ActionListener
     }
   }
 
-  public void chooseText()
+  public void error(String errorMessage)
   {
+    JOptionPane.showMessageDialog(null, errorMessage, "Error", JOptionPane.ERROR_MESSAGE);
+  }
 
+  // Modified code from Joel Castellanos' Picture class: http://www.cs.unm.edu/~joel/cs259/src/Picture.java
+  public String pickFile()
+  {
+    String dir = System.getProperty("user.dir");
+    JFileChooser fileChooser = new JFileChooser(dir);
+    int returnVal = fileChooser.showOpenDialog(null);
+
+    if (returnVal == JFileChooser.APPROVE_OPTION)
+    {
+      File file = fileChooser.getSelectedFile();
+      String path = file.getPath();
+      System.out.println("You selected file: [" + path + "]");
+      return path;
+    }
+    return null;
   }
 
   public Reader openFile(String path)
@@ -187,6 +243,60 @@ public class Markov extends JFrame implements ActionListener
       JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
     }
     return reader;
+  }
+
+  public String readWord()
+  {
+    String word = " ";
+
+    try
+    {
+      int ascii;
+      while ((ascii = reader.read()) != -1)
+      {
+        char c = (char) ascii;
+        if (!Character.isWhitespace(c))
+        {
+          if (c == '!') c = '.';
+          if (c == '.' || c == ',' || c == '?')
+          if (Character.isLetter(c) || c == '\'') word = word + c;
+        }
+      }
+    }
+    catch (IOException e)
+      { String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
+        JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
+        e.printStackTrace();
+      }
+
+//    while (word.length() == 0)
+//    {
+//      try
+//      {
+//        char c=0;
+//        int ascii = reader.read();
+//        if (ascii != -1) c = (char) ascii;
+//        while (Character.isWhitespace(c))
+//        {
+//          ascii = reader.read();
+//          if (ascii == -1) break;
+//          c = (char) ascii;
+//        }
+//        while (!Character.isWhitespace(c))
+//        {
+//          if (c == '!') c = '.';
+//          if (c == '.' || c == ',' || c == '?')
+//          if (Character.isLetter(c) || c == '\'') word = word + c;
+//        }
+//      }
+//      catch (IOException e)
+//      { String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
+//        JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
+//        e.printStackTrace();
+//      }
+//    }
+    if (word.length() == 0) return null;
+    else return word;
   }
 
   public String[] readWordsOnLine()
@@ -219,7 +329,6 @@ public class Markov extends JFrame implements ActionListener
 
       out += c;
     }
-
     return out;
   }
 

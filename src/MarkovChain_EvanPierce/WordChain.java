@@ -27,7 +27,6 @@ public class WordChain
     ancestry[PARENT] = FOSTER_PARENT;
     ancestry[GRANDPARENT] = null;
     ancestry[GREATGRANDPARENT] = null;
-    //    JOptionPane.showInputDialog()
   }
 
   public void addWord(String word)
