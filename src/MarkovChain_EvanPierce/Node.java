@@ -8,4 +8,6 @@ public class Node
   public String word;
   public java.util.TreeMap <String, Node> children = null;
   public int count = 1;
+  public Node(String w) { word = w; }
+  public Node(){}
 }

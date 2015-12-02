@@ -1,15 +1,11 @@
-package MarkovChain_EvanPierce;
-
-/**
+package MarkovChain_EvanPierce; /**
  * Class from http://stackoverflow.com/questions/8017811/only-allowing-numbers-and-a-symbol-to-be-typed-into-a-jtextfield/8017847#8017847
  * Minor edits by Evan Pierce
  */
-import javax.swing.*;
 import javax.swing.text.*;
 import java.util.regex.*;
 public class NumberOnlyFilter extends DocumentFilter
 {
-
   public void insertString(DocumentFilter.FilterBypass fb, int offset, String text, AttributeSet attr) throws BadLocationException
   {
     StringBuilder sb = new StringBuilder();
@@ -37,5 +33,4 @@ public class NumberOnlyFilter extends DocumentFilter
     boolean isMatch = matcher.matches();
     return isMatch;
   }
-
 }

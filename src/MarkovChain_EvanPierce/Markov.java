@@ -3,32 +3,40 @@ package MarkovChain_EvanPierce;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.io.*;
-import java.util.regex.Pattern;
+import java.util.Random;
 import javax.swing.*;
 import javax.swing.text.AbstractDocument;
 
 public class Markov extends JFrame implements ActionListener
 {
-  private JButton order1, order2, order3, start;
+  private JButton order0, order1, order2, order3, start;
   private JLabel stringLabel, orderLabel;
   private JTextField stringCountInput;
-
-//  private Pattern validChar = Pattern.compile("[a-zA-Z]|[']");
-
-  public int stringCount = -1;
-  public int order = -1;
-
-  private final int frameWidth = 300;
-  private final int frameHeight = 300;
-
+  private int sentenceCount = -1;
+  private int order = -1;
+  private int ascii;
+//  private final String[] paths = new String[] {"Hamlet_Prince_of_Denmark.txt", "The_Life_of_King_Henry_the_Fifth.txt",
+//      "The_Tragedy_of_Macbeth.txt", "The_Tragedy_of_Romeo_and_Juliet.txt"};
+  private final String[] paths = new String[] {"CatInTheHat.txt"};
+  private final int frameWidth = 330;
+  private final int frameHeight = 290;
   private int insideWidth, insideHeight;
-
   private BufferedReader reader = null;
+  private WordChain chain;
 
-  public static void main(String[] args0) { new Markov(); }
+//======================================================================================================================
+
+  public static void main(String[] args)
+  {
+    if (args.length < 1) new Markov();
+    else if (args.length == 2) new Markov(args[0], args[1]);
+    else throw new IllegalArgumentException("Pass exactly two arguments");
+  }
+
+//======================================================================================================================
+// Constructor to handle program run without arguments
+//======================================================================================================================
 
   public Markov()
   {
@@ -42,7 +50,7 @@ public class Markov extends JFrame implements ActionListener
     int X = (int)width/2-insideWidth/2;
     int Y = (int)height/2-insideHeight/2;
 
-    this.setTitle("Markov Chain");
+    this.setTitle("MarkovChain_EvanPierce.Markov Chain");
     this.setBounds(X, Y, insideWidth, insideHeight);
     this.setResizable(true);
     this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -59,77 +67,181 @@ public class Markov extends JFrame implements ActionListener
     panel.setLayout(null);
     contentPane.add(panel);
 
-
-    int butWidth = 80;
+    int butWidth = 70;
     int butHeight = 50;
     int margin = 10;
     int textWidth = 100;
     int labelWidth = 90;
-    int butYOffset = butHeight + margin;
+    int butYOffset = butHeight;
     int butXOffset = butWidth + margin;
     int centerX = frameWidth / 2 - labelWidth / 2;
 
     stringLabel = new JLabel("Set String #");
     panel.add(stringLabel);
-    stringLabel.setBounds(frameWidth / 2 - labelWidth / 2, margin, labelWidth, butHeight);
+    stringLabel.setBounds((frameWidth / 2 - labelWidth/2) + 10, margin, labelWidth, butHeight);
 
     stringCountInput = new JTextField();
     panel.add(stringCountInput);
     stringCountInput.setBounds(frameWidth / 2 - textWidth / 2, butYOffset, 100, 30);
     stringCountInput.addActionListener(this);
-    ((AbstractDocument)stringCountInput.getDocument()).setDocumentFilter(new NumberOnlyFilter());
-    stringCountInput.addKeyListener(new KeyListener()
-    {
-      @Override
-      public void keyPressed(KeyEvent e) {
-        int keyCode = e.getKeyCode();
-//        if (keyCode > 47 && keyCode < 58)
-//        {
-//          e.consume();
-//        }
-        System.out.println(e.getKeyCode());
-      }
-
-      @Override
-      public void keyReleased(KeyEvent arg0) {
-      }
-
-      @Override
-      public void keyTyped(KeyEvent arg0) {
-      }
-    });
+    // Document Filter causes issue when compiling from command prompt
+    ((AbstractDocument)stringCountInput.getDocument()).setDocumentFilter(new MarkovChain_EvanPierce.NumberOnlyFilter());
 
     orderLabel = new JLabel("Select Order #");
     panel.add(orderLabel);
-    orderLabel.setBounds(centerX, butYOffset*2, labelWidth, butHeight);
+    orderLabel.setBounds(centerX, butYOffset * 2, labelWidth, butHeight);
+
+    order0 = new JButton("0");
+    panel.add(order0);
+    order0.setBounds(margin, butYOffset * 3 - margin, butWidth, butHeight);
+    order0.addActionListener(this);
 
     order1 = new JButton("1");
     panel.add(order1);
-    order1.setBounds(centerX - butXOffset, butYOffset*3-margin, butWidth, butHeight);
+    order1.setBounds(margin + butXOffset, butYOffset * 3 - margin, butWidth, butHeight);
     order1.addActionListener(this);
 
     order2 = new JButton("2");
     panel.add(order2);
-    order2.setBounds(centerX, butYOffset*3-margin, butWidth, butHeight);
+    order2.setBounds(margin + butXOffset * 2, butYOffset * 3 - margin, butWidth, butHeight);
     order2.addActionListener(this);
 
     order3 = new JButton("3");
     panel.add(order3);
-    order3.setBounds(centerX + butXOffset, butYOffset*3-margin, butWidth, butHeight);
+    order3.setBounds(margin + butXOffset * 3, butYOffset * 3 - margin, butWidth, butHeight);
     order3.addActionListener(this);
 
     start = new JButton("Start");
     panel.add(start);
-    start.setBounds(centerX, butYOffset*4, butWidth, butHeight);
+    start.setBounds(centerX, butYOffset * 4 + 15, butWidth+20, butHeight);
+    start.setBackground(Color.CYAN);
     start.addActionListener(this);
-
-
   }
+
+//======================================================================================================================
+// Overloaded constructor to handle arguments passed by command prompt
+//======================================================================================================================
+
+  public Markov (String sentence, String orderString)
+  {
+    for (int i = 0; i < sentence.length(); i++)
+    {
+      Character c = sentence.charAt(i);
+      if (!Character.isDigit(c)) throw new IllegalArgumentException("Sentence argument must be a number");
+    }
+    sentenceCount = Integer.parseInt(sentence);
+
+    for (int i = 0; i < orderString.length(); i++)
+    {
+      Character c = orderString.charAt(i);
+      if (!Character.isDigit(c)) throw new IllegalArgumentException("Order argument must be a number");
+    }
+    order = Integer.parseInt(orderString);
+
+    for (int i = 0; i < paths.length;i++)
+    {
+      String path = paths[i];
+//      System.out.println(path);
+      initChain(path);
+    }
+  }
+
+//======================================================================================================================
+// handleStart() handles Markov Chain when activated from Start button
+//======================================================================================================================
+
+  public void handleStart()
+  {
+    if (!stringCountInput.getText().equals(""))
+    {
+      sentenceCount = Integer.parseInt(stringCountInput.getText());
+      stringLabel.setText("String # = " + sentenceCount);
+    }
+
+    if (sentenceCount < 1)
+    {
+      error("Enter amount of sentences to be generated");
+      return;
+    }
+
+    if (order < 0 || order > 3)
+    {
+      error("Order must be within the range 0-3");
+      return;
+    }
+
+    System.out.println("MarkovChain_EvanPierce.Markov Chain Started");
+    this.dispose();
+    JOptionPane.showMessageDialog(null, "Select text files to read from", "Select Text Files",
+        JOptionPane.INFORMATION_MESSAGE);
+
+    for(;;)
+    {
+      String path = pickFile();
+      System.out.println(path);
+      if (path == null)
+      {
+        int reply = JOptionPane.showConfirmDialog(null, "Are you sure you want to exit?", "Exit",
+            JOptionPane.YES_NO_OPTION);
+        if (reply == JOptionPane.YES_OPTION) System.exit(0);
+        else continue;
+      }
+      else if (path.length() < 1)
+      {
+        error("Select a valid file");
+        continue;
+      }
+      initChain(path);
+
+      int reply2 = JOptionPane.showConfirmDialog(null, "Would you like to choose more text files?", "Continue",
+          JOptionPane.YES_NO_OPTION);
+      if (reply2 == JOptionPane.NO_OPTION) break;
+    }
+  }
+
+//======================================================================================================================
+// initChain() opens file, reads the file, adds words to TreeMap, and prints sentences to console
+//======================================================================================================================
+
+  public void initChain(String path)
+  {
+    openFile(path);
+    try { ascii = reader.read(); }
+    catch (IOException o)
+    { String msg = "readWordsOnLine(): IO Exception: " + o.getMessage();
+      JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
+      o.printStackTrace();
+    }
+
+    chain = new WordChain(order);
+    passWord();
+//    chain.printMap();
+    Random rand = new Random();
+    for (int k = 0; k < sentenceCount; k ++) chain.generateSentence(rand);
+
+    try
+    {
+      reader.close();
+    }
+    catch (IOException e)
+    { String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
+      JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
+    }
+  }
+
+//======================================================================================================================
+// actionPerformed handles buttons on JFrame (only applicable when run with no arguments)
+//======================================================================================================================
 
   @Override
   public void actionPerformed(ActionEvent e)
   {
     Object obj = e.getSource();
+    if (obj == order0)
+    {
+      order = 0;
+      orderLabel.setText("Order = " + order);
+    }
     if (obj == order1)
     {
       order = 1;
@@ -147,75 +259,46 @@ public class Markov extends JFrame implements ActionListener
     }
     if (obj == start)
     {
-      if (!stringCountInput.getText().equals(""))
-      {
-        stringCount = Integer.parseInt(stringCountInput.getText());
-        stringLabel.setText("String # = " + stringCount);
-      }
-      if (stringCount < 1)
-      {
-        error("Enter amount of sentences to be generated");
-        return;
-      }
-      if (order < 1)
-      {
-        error("Order must be > 0 and < 3");
-        return;
-      }
-      System.out.println("Markov Chain Started");
-//      new WordChain(order, stringCount);
-      this.dispose();
-      JOptionPane.showMessageDialog(null, "Select text files to read from", "Select Text Files",
-          JOptionPane.INFORMATION_MESSAGE);
-      int files = 0;
-      for(;;)
-      {
-        String path = pickFile();
-        if (path == null)
-        {
-          int reply = JOptionPane.showConfirmDialog(null, "Are you sure you want to exit?", "Exit",
-              JOptionPane.YES_NO_OPTION);
-          if (reply == JOptionPane.YES_OPTION) System.exit(0);
-          else continue;
-        }
-//        if (path == null && files == 0)
-//        {
-//          error("Select at least one file");
-//          continue;
-//        }
-        else if (path.length() < 1)
-        {
-          error("Select a valid file");
-          continue;
-        }
-//        if (path.substring(path.length()-3) != ".txt")
-//        {
-//          error("File must be a text file");
-//          continue;
-//        }
-        files ++;
-        openFile(path);
-        System.out.println(readWord());
-        int reply = JOptionPane.showConfirmDialog(null, "Would you like to choose more text files?", "Continue",
-            JOptionPane.YES_NO_OPTION);
-        if (reply == JOptionPane.NO_OPTION) break;
-      }
-      System.out.println("Complete");
+      handleStart();
     }
     if (obj == stringCountInput)
     {
       if (stringCountInput.getText().equals("")) return;
-      stringCount = Integer.parseInt(stringCountInput.getText());
-      stringLabel.setText("String # = " + stringCount);
+      sentenceCount = Integer.parseInt(stringCountInput.getText());
+      stringLabel.setText("String # = " + sentenceCount);
     }
   }
+
+//======================================================================================================================
+// passWord() gives each word from text to addWord() method in WordChain class
+//======================================================================================================================
+
+  public void passWord()
+  {
+    String word = "";
+    while (word != null)
+    {
+      word = readWord();
+      if (word == null) break;
+//      System.out.println("word = [" + word + "]");
+      chain.addWord(word);
+    }
+  }
+
+//======================================================================================================================
+// error method consolidates error message
+//======================================================================================================================
 
   public void error(String errorMessage)
   {
     JOptionPane.showMessageDialog(null, errorMessage, "Error", JOptionPane.ERROR_MESSAGE);
   }
 
-  // Modified code from Joel Castellanos' Picture class: http://www.cs.unm.edu/~joel/cs259/src/Picture.java
+//======================================================================================================================
+// pickFile() is modified code from Joel Castellanos' Picture class: http://www.cs.unm.edu/~joel/cs259/src/Picture.java
+// Allows user to choose which text file(s) to read from
+//======================================================================================================================
+
   public String pickFile()
   {
     String dir = System.getProperty("user.dir");
@@ -226,13 +309,17 @@ public class Markov extends JFrame implements ActionListener
     {
       File file = fileChooser.getSelectedFile();
       String path = file.getPath();
-      System.out.println("You selected file: [" + path + "]");
+//      System.out.println("You selected file: [" + path + "]");
       return path;
     }
     return null;
   }
 
-  public Reader openFile(String path)
+//======================================================================================================================
+// openFile() creates BufferedReader of passed text file
+//======================================================================================================================
+
+  public void openFile(String path)
   {
     try
     {
@@ -242,123 +329,64 @@ public class Markov extends JFrame implements ActionListener
     { String msg = "IO Exception: " + e.getMessage();
       JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
     }
-    return reader;
   }
+
+//======================================================================================================================
+// readWord() reads character by character and returns when it reads a word
+// Uses mark() and reset() methods from BufferedReader to handle splitting of punctuation
+//======================================================================================================================
 
   public String readWord()
   {
-    String word = " ";
-
-    try
+    String word = "";
+    while (word.length() == 0)
     {
-      int ascii;
-      while ((ascii = reader.read()) != -1)
+      try
       {
-        char c = (char) ascii;
-        if (!Character.isWhitespace(c))
+        char c = 0;
+        if (ascii != -1) c = (char) ascii;
+        while (Character.isWhitespace(c))
         {
+          if (ascii == -1) break;
+          ascii = reader.read();
+          c = (char) ascii;
+        }
+        while (!Character.isWhitespace(c))
+        {
+          if (ascii == -1) break;
           if (c == '!') c = '.';
           if (c == '.' || c == ',' || c == '?')
-          if (Character.isLetter(c) || c == '\'') word = word + c;
+          {
+            if (word.length() > 0)
+            {
+              reader.mark(0);
+              reader.reset();
+              return word;
+            }
+            else
+            {
+              word += c;
+              ascii = reader.read();
+              return word;
+            }
+          }
+          if (Character.isLetter(c) || c == '-' || c == '\'') word += c;
+          ascii = reader.read();
+          c = (char) ascii;
         }
+        if (ascii == -1) break;
       }
-    }
-    catch (IOException e)
-      { String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
+      catch (IOException e)
+      {
+        String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
         JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
         e.printStackTrace();
       }
-
-//    while (word.length() == 0)
-//    {
-//      try
-//      {
-//        char c=0;
-//        int ascii = reader.read();
-//        if (ascii != -1) c = (char) ascii;
-//        while (Character.isWhitespace(c))
-//        {
-//          ascii = reader.read();
-//          if (ascii == -1) break;
-//          c = (char) ascii;
-//        }
-//        while (!Character.isWhitespace(c))
-//        {
-//          if (c == '!') c = '.';
-//          if (c == '.' || c == ',' || c == '?')
-//          if (Character.isLetter(c) || c == '\'') word = word + c;
-//        }
-//      }
-//      catch (IOException e)
-//      { String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
-//        JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
-//        e.printStackTrace();
-//      }
-//    }
+    }
     if (word.length() == 0) return null;
     else return word;
   }
-
-  public String[] readWordsOnLine()
-  {
-    String str = null;
-    try
-    {
-      str = reader.readLine();
-      str = removeJunk(str);
-    }
-    catch (IOException e)
-    { String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
-      JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
-      e.printStackTrace();
-    }
-
-
-    if (str == null) return null;
-    return str.split(" ");
-  }
-
-  private String removeJunk(String str)
-  {
-    String out = "";
-    for (int i = 0;i<str.length();i++)
-    {
-      char c = str.charAt(i);
-      if (c == '!') c = '.';
-      if (Character.isLetter(c) || c == '.' || c == ',' || c == '?')
-
-      out += c;
-    }
-    return out;
-  }
-
-//  public Markov(String[ ] args) {
-//    //WordChain.ReadTextFile markov = new WordChain.ReadTextFile("data/WordChain.ReadTextFile.java");
-//    Markov markov = new Markov();
-//
-////    markov = openFile("data/CatInTheHat.txt");
-//
-//    String[] strArray = {"Hello"};
-//    while (strArray!=null)
-//    {
-//      strArray = markov.readWordsOnLine();
-//      if (strArray == null) break;
-//      for (String str : strArray)
-//      { System.out.println(str);
-//      }
-//    }
-//
-//    try
-//    {
-//      markov.reader.close();
-//    }
-//    catch (IOException e)
-//    { String msg = "readWordsOnLine(): IO Exception: " + e.getMessage();
-//      JOptionPane.showMessageDialog(null, msg, "Warning", JOptionPane.WARNING_MESSAGE);
-//    }
-//  }
 }
-
 
 
 // Key = word, only 1 key (String)
